@@ -112,8 +112,8 @@
             transition: height 0.3s ease; 
         }
         
-        /* On smaller iOS screens or tight vertical space, use the "Mini" player height (80px) */
-        @media (max-height: 750px), (max-width: 600px) {
+        /* Keep the player compact on mobile/tablets even when browser UI is hidden in fullscreen */
+        @media (max-height: 1100px), (max-width: 1024px) {
             #spotify { height: 80px; } 
             #bottom-left { width: 300px; }
         }
