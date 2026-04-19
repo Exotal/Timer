@@ -2,7 +2,7 @@
   "name": "Aesthetic Focus Timer",
   "short_name": "Focus",
   "description": "An aesthetic Pomodoro timer for deep work sessions.",
-  "start_url": "index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
