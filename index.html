@@ -8,7 +8,7 @@
     
     <!-- PWA and iOS Specific Tags -->
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1518331307671-b58604313b19?w=192&h=192&fit=crop">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Focus Timer">
@@ -21,15 +21,27 @@
         /* --- CORE CSS --- */
         /* Changed height from 100vh to 100% for better iOS PWA/fullscreen compatibility */
         body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100%; font-family: 'Lato', sans-serif; color: white; overflow: hidden; }
-        
+
         /* Background Wrapper - Default color if image fails */
         #bg-wrapper { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background-color: #2c3e50; transition: background 0.5s ease; background-size: cover; background-position: center; }
 
         /* Layout structure like reference */
         #top { position: fixed; top: 0; left: 0; right: 0; height: 60px; display: flex; justify-content: space-between; padding: 20px; z-index: 5; }
         #top-right { display: flex; gap: 10px; }
-        #bottom { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-end; padding: 20px; z-index: 5; }
-        #bottom-left { width: 375px; margin-bottom: -30px; }
+        #bottom { 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            right: 0; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-end; 
+            padding: 20px; 
+            /* Adds extra padding at the bottom for iOS home bar/safe areas */
+            padding-bottom: calc(20px + env(safe-area-inset-bottom)); 
+            z-index: 5; 
+        }
+        #bottom-left { width: 375px; margin-bottom: 0; transition: width 0.3s ease; }
         #bottom-right { width: 300px; display: flex; justify-content: flex-end; }
 
         /* Main Container for Timer */
@@ -94,6 +106,18 @@
         /* Specific container adjustments */
         .container h1 { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; letter-spacing: 3px; text-transform: uppercase; opacity: 0.7; margin-bottom: 0.5rem; }
 
+        /* Spotify Responsive Scaling */
+        #spotify { 
+            height: 152px; /* Standard Compact height */
+            transition: height 0.3s ease; 
+        }
+        
+        /* On smaller iOS screens or tight vertical space, use the "Mini" player height (80px) */
+        @media (max-height: 750px), (max-width: 600px) {
+            #spotify { height: 80px; } 
+            #bottom-left { width: 300px; }
+        }
+
     </style>
 </head>
 <body>
@@ -103,7 +127,7 @@
     <div id="top">
         <div id="top-left"></div>
         <div id="top-right">
-            <button id="settings-btn" class="icon-btn" onclick="toggleSettings()" title="Settings">&#9881;</button>
+            <button id="settings-btn" class="icon-btn" onclick="toggleSettings()" title="Settings">&#9881;&#xFE0E;</button>
         </div>
     </div>
 
@@ -122,12 +146,12 @@
 
     <div id="bottom">
         <div id="bottom-left">
-            <iframe id="spotify" width="100%" height="180" src="https://open.spotify.com/embed/playlist/60gyLSHCcOGg3HWj5M10Qp?utm_source=generator&theme=0" frameborder="0" allowtransparency="true" allow="encrypted-media" style="border-radius: 12px;"></iframe>
+            <iframe id="spotify" width="100%" src="https://open.spotify.com/embed/playlist/60gyLSHCcOGg3HWj5M10Qp?utm_source=generator&theme=0" frameborder="0" allowtransparency="true" allow="encrypted-media" style="border-radius: 12px;"></iframe>
             <!-- <iframe data-testid="embed-iframe" style="border-radius:12px" src="https://open.spotify.com/embed/playlist/60gyLSHCcOGg3HWj5M10Qp?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
             <iframe data-testid="embed-iframe" style="border-radius:12px" src="https://open.spotify.com/embed/playlist/60gyLSHCcOGg3HWj5M10Qp?utm_source=generator&theme=0" width="100%" height="352" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe> -->
         </div>
         <div id="bottom-mid"></div>
-        <div id="bottom-right"><button class="icon-btn" onclick="toggleFullScreen()" title="Fullscreen">&#9974;</button></div>
+        <div id="bottom-right"><button class="icon-btn" onclick="toggleFullScreen()" title="Fullscreen">&#9974;&#xFE0E;</button></div>
     </div>
 
     <div id="settings-modal">
