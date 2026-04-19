@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Timer</title>
+    
+    <!-- PWA and iOS Specific Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Focus Timer">
+
+    <link href="https://fonts.googleapis.com/css?family=Lato:400,700" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        /* --- CORE CSS --- */
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Lato', sans-serif; color: white; overflow: hidden; }
+        
+        /* Background Wrapper - Default color if image fails */
+        #bg-wrapper { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background-color: #2c3e50; transition: background 0.5s ease; background-size: cover; background-position: center; }
+
+        /* Layout structure like reference */
+        #top { position: fixed; top: 0; left: 0; right: 0; height: 60px; display: flex; justify-content: space-between; padding: 20px; z-index: 5; }
+        #top-right { display: flex; gap: 10px; }
+        #bottom { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-end; padding: 20px; z-index: 5; }
+        #bottom-left { width: 375px; margin-bottom: -30px; }
+        #bottom-right { width: 300px; display: flex; justify-content: flex-end; }
+
+        /* Main Container for Timer */
+        /* .container { text-align: center; background: transparent; padding: 2rem 3rem; z-index: 2; position: relative; } */
+        .container { text-align: center; background: rgba(0,0,0,0.5); padding: 3rem 4rem; border-radius: 25px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        
+        /* Mode Tabs */
+        .mode-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        .mode-btn { background: none; border: none; color: rgba(255,255,255,0.6); padding: 8px 16px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: bold; border-radius: 8px; transition: 0.3s; }
+        .mode-btn.active { background: rgba(255,255,255,0.2); color: white; }
+
+        #timer { font-size: 8rem; font-family: 'Space Grotesk', sans-serif; font-weight: 600; margin: 0 0 20px 0; letter-spacing: -4px; line-height: 1; }
+        
+        /* Buttons General */
+        button { padding: 12px 24px; font-size: 1rem; cursor: pointer; border: none; border-radius: 8px; transition: 0.3s; font-family: 'Inter', sans-serif; }
+        
+        .btn-main { background: rgba(255, 255, 255, 0.15); color: #fff; margin: 0 5px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .btn-main:hover { background: #e0e0e0; }
+
+        /* Icon Buttons */
+        .icon-btn { background: transparent; width: 60px; height: 60px; font-size: 2rem; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; transition: 0.3s; outline: none; }
+        .icon-btn:hover { background: rgba(255,255,255,0.3); }
+
+        /* --- SETTINGS POPUP MODAL --- */
+        #settings-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(15px); transition: 0.3s; }
+        #settings-modal.show { display: flex; } /* Show class */
+
+        .modal-content { background: rgba(15, 15, 15, 0.85); border-radius: 24px; width: 500px; max-width: 90vw; padding: 30px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.4); font-family: 'Inter', sans-serif; position: relative; }
+        
+        .close-modal { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; color: rgba(255,255,255,0.5); }
+        .close-modal:hover { color: white; }
+
+        .modal-header { margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; }
+        .modal-title { margin: 0; font-size: 1.5rem; }
+
+        .form-group { margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+        label { color: rgba(255,255,255,0.6); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* Time Input */
+        input[type="number"] { width: 70px; padding: 5px; border: none; border-bottom: 1px solid rgba(255,255,255,0.2); background: transparent; color: white; font-size: 1.1rem; text-align: right; font-family: 'Space Grotesk', sans-serif; outline: none; }
+        input[type="number"]:focus { border-bottom-color: white; }
+
+        /* Background Presets Grid */
+        .bg-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 5px; width: 100%; }
+        .bg-thumb { width: 100%; height: 60px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; background-size: cover; background-position: center; transition: border 0.3s; }
+        .bg-thumb:hover { border-color: rgba(255,255,255,0.5); }
+        .bg-thumb.selected { border-color: white; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+        /* Custom Background Upload */
+        .custom-bg-controls { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.2); }
+        #custom-bg-thumb.bg-thumb { background-color: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 0.8em; text-align: center; line-height: 1.2; }
+
+        #save-settings { width: 100%; margin-top: 25px; background: #fff; color: #000; font-weight: bold; border-radius: 12px; }
+        #save-settings:hover { background: #e0e0e0; }
+
+        /* Specific container adjustments */
+        .container h1 { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; letter-spacing: 3px; text-transform: uppercase; opacity: 0.7; margin-bottom: 0.5rem; }
+
+    </style>
+</head>
+<body>
+
+    <div id="bg-wrapper"></div>
+    
+    <div id="top">
+        <div id="top-left"></div>
+        <div id="top-right">
+            <button id="settings-btn" class="icon-btn" onclick="toggleSettings()" title="Settings">&#9881;</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="mode-tabs">
+            <button class="mode-btn active" onclick="switchMode('focus')">Focus</button>
+            <button class="mode-btn" onclick="switchMode('short')">Short Break</button>
+            <button class="mode-btn" onclick="switchMode('long')">Long Break</button>
+        </div>
+        <div id="timer">25:00</div>
+        <div class="controls">
+            <button class="btn-main" id="start-pause-btn" onclick="toggleTimer()">Start</button>
+            <button class="btn-main" onclick="resetTimer()">Reset</button>
+        </div>
+    </div>
+
+    <div id="bottom">
+        <div id="bottom-left">
+            <iframe id="spotify" width="100%" height="180" src="https://open.spotify.com/embed/playlist/60gyLSHCcOGg3HWj5M10Qp?utm_source=generator&theme=0" frameborder="0" allowtransparency="true" allow="encrypted-media" style="border-radius: 12px;"></iframe>
+            <!-- <iframe data-testid="embed-iframe" style="border-radius:12px" src="https://open.spotify.com/embed/playlist/60gyLSHCcOGg3HWj5M10Qp?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+            <iframe data-testid="embed-iframe" style="border-radius:12px" src="https://open.spotify.com/embed/playlist/60gyLSHCcOGg3HWj5M10Qp?utm_source=generator&theme=0" width="100%" height="352" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe> -->
+        </div>
+        <div id="bottom-mid"></div>
+        <div id="bottom-right"><button class="icon-btn" onclick="toggleFullScreen()" title="Fullscreen">&#9974;</button></div>
+    </div>
+
+    <div id="settings-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="toggleSettings()">&times;</span>
+            <div class="modal-header">
+                <h2 class="modal-title">Settings</h2>
+            </div>
+
+            <div class="form-group">
+                <label for="focus-input">Focus (mins)</label>
+                <input type="number" id="focus-input" min="1" max="120" value="25">
+            </div>
+            <div class="form-group">
+                <label for="short-input">Short Break (mins)</label>
+                <input type="number" id="short-input" min="1" max="30" value="5">
+            </div>
+            <div class="form-group">
+                <label for="long-input">Long Break (mins)</label>
+                <input type="number" id="long-input" min="1" max="60" value="15">
+            </div>
+
+            <div class="form-group">
+                <label>Choose Background</label>
+                <div class="bg-presets" id="bg-presets">
+                    </div>
+            </div>
+
+            <div class="custom-bg-controls">
+                <input type="file" id="custom-bg-upload" accept="image/*" style="display: none;">
+                <button type="button" class="btn-secondary" id="upload-bg-btn">Upload Custom Image</button>
+                <button type="button" class="btn-secondary" id="clear-custom-bg-btn">Clear Custom Image</button>
+            </div>
+
+            <button id="save-settings" onclick="applySettings()">Save & Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Preset Images - REPLACE THESE URLS WITH YOUR OWN IMAGES/LINKS
+        const presets = [
+            'https://images.unsplash.com/photo-1518331307671-b58604313b19?q=80&w=1600&h=900&auto=format&fit=crop', // Cafe
+            'https://images.unsplash.com/photo-1543332164-6e82f35557af?q=80&w=1600&h=900&auto=format&fit=crop', // Lo-fi library
+            'https://images.unsplash.com/photo-1549492423-400259a2e574?q=80&w=1600&h=900&auto=format&fit=crop', // Minimal desk
+            'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?q=80&w=1600&h=900&auto=format&fit=crop', // Night sky
+            'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&h=900&auto=format&fit=crop', // Mountains
+            'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1600&h=900&auto=format&fit=crop'  // Relaxing forest
+        ];
+
+        let customBgData = localStorage.getItem('customBgData') || null;
+        let customBgName = localStorage.getItem('customBgName') || null;
+        let selectedBgIsCustom = false;
+        let selectedBg = presets[5]; // Default selection
+        let timerModes = {
+            focus: 25,
+            short: 5,
+            long: 15
+        };
+        let currentMode = 'focus';
+        let timeLeft = timerModes[currentMode] * 60; // Initial time in seconds
+        let timerId = null;
+
+        const bgWrapper = document.getElementById('bg-wrapper');
+        const timerDisplay = document.getElementById('timer');
+        const startPauseBtn = document.getElementById('start-pause-btn');
+        const modal = document.getElementById('settings-modal');
+        const bgPresetsContainer = document.getElementById('bg-presets');
+
+        /* --- INITIALIZATION --- */
+        function initApp() {
+            if (customBgData) {
+                selectedBg = customBgData;
+                selectedBgIsCustom = true;
+            }
+            setAppBackground(selectedBg);
+            updateDisplay();
+            setupBgPresets();
+        }
+
+        /* --- CORE TIMER LOGIC --- */
+        function updateDisplay() {
+            let mins = Math.floor(timeLeft / 60);
+            let secs = timeLeft % 60;
+            timerDisplay.innerText = 
+                `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            // Update UI buttons
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.innerText.toLowerCase().includes(mode));
+            });
+            // Reset timer for new mode
+            resetTimer();
+        }
+
+        function toggleTimer() {
+            if (timerId) {
+                // Pause logic
+                clearInterval(timerId);
+                timerId = null;
+                startPauseBtn.innerText = 'Start';
+            } else {
+                // Start logic
+                startPauseBtn.innerText = 'Pause';
+                timerId = setInterval(() => {
+                    timeLeft--;
+                    updateDisplay();
+                    
+                    if (timeLeft <= 0) { 
+                        clearInterval(timerId); 
+                        timerId = null;
+                        startPauseBtn.innerText = 'Start';
+                        timeLeft = timerModes[currentMode] * 60; // Reset ready for next session
+                        updateDisplay();
+                        alert("Focus Session Complete! Take a break."); 
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerId);
+            timerId = null;
+            timeLeft = timerModes[currentMode] * 60; // Reset to the customized duration
+            startPauseBtn.innerText = 'Start';
+            updateDisplay();
+        }
+
+        /* --- SETTINGS MENU LOGIC --- */
+        function toggleSettings() {
+            // Fill the input with the current duration before showing
+            document.getElementById('focus-input').value = timerModes.focus;
+            document.getElementById('short-input').value = timerModes.short;
+            document.getElementById('long-input').value = timerModes.long;
+            modal.classList.toggle('show');
+        }
+
+        function setupBgPresets() {
+            bgPresetsContainer.innerHTML = ''; // Clear existing
+            
+            presets.forEach((url, index) => {
+                const thumb = document.createElement('div');
+                thumb.className = 'bg-thumb';
+                thumb.style.backgroundImage = `url('${url}')`;
+                
+                // Highlight the currently applied background
+                if(!selectedBgIsCustom && url === selectedBg) { thumb.classList.add('selected'); }
+
+                thumb.onclick = () => selectPreset(index);
+                bgPresetsContainer.appendChild(thumb);
+            });
+
+            // Add custom image thumbnail
+            const customThumb = document.createElement('div');
+            customThumb.id = 'custom-bg-thumb';
+            customThumb.className = 'bg-thumb';
+            if (customBgData) {
+                customThumb.style.backgroundImage = `url('${customBgData}')`;
+                customThumb.title = customBgName || 'Custom Image';
+                customThumb.innerHTML = ''; // Clear any previous text
+            } else {
+                customThumb.style.backgroundImage = 'none';
+                customThumb.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                customThumb.innerHTML = '<span style="color:rgba(255,255,255,0.5);">No Custom Image</span>';
+                customThumb.title = 'No Custom Image';
+            }
+            
+            if (selectedBgIsCustom) {
+                customThumb.classList.add('selected');
+            }
+            customThumb.onclick = () => selectCustomImage();
+            bgPresetsContainer.appendChild(customThumb);
+        }
+
+        function selectPreset(index) {
+            // Update the temporary selection variable
+            selectedBg = presets[index];
+            selectedBgIsCustom = false;
+            setupBgPresets(); // Re-render thumbnails to show selection border
+        }
+
+        function selectCustomImage() {
+            if (customBgData) {
+                selectedBg = customBgData;
+                selectedBgIsCustom = true;
+                setupBgPresets();
+            }
+        }
+
+        document.getElementById('upload-bg-btn').addEventListener('click', () => {
+            document.getElementById('custom-bg-upload').click();
+        });
+
+        document.getElementById('custom-bg-upload').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    customBgData = reader.result;
+                    customBgName = file.name;
+                    localStorage.setItem('customBgData', customBgData);
+                    localStorage.setItem('customBgName', customBgName);
+                    selectCustomImage();
+                    setAppBackground(customBgData);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function setAppBackground(imageUrl) {
+            // Apply the background image to the body or wrapper
+            bgWrapper.style.backgroundImage = `url('${imageUrl}')`;
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) { document.exitFullscreen(); }
+            }
+        }
+
+        document.getElementById('clear-custom-bg-btn').addEventListener('click', clearCustomImage);
+
+        function clearCustomImage() {
+            customBgData = null;
+            customBgName = null;
+            localStorage.removeItem('customBgData');
+            localStorage.removeItem('customBgName');
+            selectedBgIsCustom = false;
+            selectedBg = presets[5]; // Reset to a default preset
+            setAppBackground(selectedBg);
+            setupBgPresets();
+        }
+
+        function applySettings() {
+            const fVal = document.getElementById('focus-input').value;
+            const sVal = document.getElementById('short-input').value;
+            const lVal = document.getElementById('long-input').value;
+            
+            // 1. Validate & Apply New Times
+            if (fVal > 0) timerModes.focus = parseInt(fVal);
+            if (sVal > 0) timerModes.short = parseInt(sVal);
+            if (lVal > 0) timerModes.long = parseInt(lVal);
+
+            // If timer isn't running, update the time display immediately
+            if(!timerId) { 
+                timeLeft = timerModes[currentMode] * 60;
+                updateDisplay();
+            }
+
+            // 2. Apply New Background
+            setAppBackground(selectedBg);
+
+            // 3. Close Modal
+            toggleSettings();
+        }
+
+        // Register Service Worker for Offline Use
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log("Service Worker Registered"));
+        }
+
+        // Run setup on load
+        initApp();
+
+    </script>
+</body>
+</html>
