@@ -85,9 +85,32 @@
 
         /* Background Presets Grid */
         .bg-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 5px; width: 100%; }
-        .bg-thumb { width: 100%; height: 60px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; background-size: cover; background-position: center; transition: border 0.3s; }
+        .bg-thumb { position: relative; width: 100%; height: 60px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; background-size: cover; background-position: center; transition: border 0.3s; }
         .bg-thumb:hover { border-color: rgba(255,255,255,0.5); }
         .bg-thumb.selected { border-color: white; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+        /* Individual Delete Button */
+        .thumb-delete-btn {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 20px;
+            height: 20px;
+            background: white; /* Changed to white */
+            color: black; /* Changed to black for contrast */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            line-height: 0;
+            padding-bottom: 2px;
+            border: 1px solid white;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+        .bg-thumb:hover .thumb-delete-btn { opacity: 1; }
 
         /* Custom Background Upload */
         .custom-bg-controls { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
@@ -217,16 +240,17 @@
 
     <script>
         // Preset Images - REPLACE THESE URLS WITH YOUR OWN IMAGES/LINKS
-        const presets = [
+        const defaultPresets = [
             'https://images.unsplash.com/photo-1549492423-400259a2e574?q=80&w=1600&h=900&auto=format&fit=crop', // Minimal desk
             'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?q=80&w=1600&h=900&auto=format&fit=crop', // Night sky
             'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&h=900&auto=format&fit=crop', // Mountains
             'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1600&h=900&auto=format&fit=crop'  // Relaxing forest
         ];
+        let presets = JSON.parse(localStorage.getItem('presets')) || defaultPresets;
 
         let customBgs = JSON.parse(localStorage.getItem('customBgs')) || [];
         let selectedBgIsCustom = false;
-        let selectedBg = presets[3]; // Default selection
+        let selectedBg = presets.length > 0 ? presets[0] : ''; // Default to first available
         let timerModes = {
             // Default values for timer modes
             // These will be overridden by localStorage if available
@@ -348,6 +372,17 @@
                 // Highlight the currently applied background
                 if(!selectedBgIsCustom && url === selectedBg) { thumb.classList.add('selected'); }
 
+                // Create individual delete button
+                const delBtn = document.createElement('div');
+                delBtn.className = 'thumb-delete-btn';
+                delBtn.innerHTML = '&times;';
+                delBtn.title = 'Delete this preset';
+                delBtn.onclick = (e) => {
+                    e.stopPropagation(); // Prevent selecting the image when clicking delete
+                    deletePreset(index);
+                };
+                
+                thumb.appendChild(delBtn);
                 thumb.onclick = () => selectPreset(index);
                 bgPresetsContainer.appendChild(thumb);
             });
@@ -361,6 +396,18 @@
                 if (selectedBgIsCustom && selectedBg === bg.data) {
                     thumb.classList.add('selected');
                 }
+
+                // Create individual delete button
+                const delBtn = document.createElement('div');
+                delBtn.className = 'thumb-delete-btn';
+                delBtn.innerHTML = '&times;';
+                delBtn.title = 'Delete this image';
+                delBtn.onclick = (e) => {
+                    e.stopPropagation(); // Prevent selecting the image when clicking delete
+                    deleteCustomImage(index);
+                };
+                
+                thumb.appendChild(delBtn);
                 thumb.onclick = () => selectCustomImage(index);
                 bgPresetsContainer.appendChild(thumb);
             });
@@ -387,6 +434,36 @@
         function selectCustomImage(index) {
             selectedBg = customBgs[index].data;
             selectedBgIsCustom = true;
+            setupBgPresets();
+        }
+
+        function deletePreset(index) {
+            const deletedUrl = presets[index];
+            presets.splice(index, 1);
+            localStorage.setItem('presets', JSON.stringify(presets));
+
+            // If the deleted preset was currently selected, revert to another one
+            if (!selectedBgIsCustom && selectedBg === deletedUrl) {
+                selectedBg = presets.length > 0 ? presets[0] : (customBgs.length > 0 ? customBgs[0].data : '');
+                selectedBgIsCustom = customBgs.length > 0 && selectedBg === customBgs[0].data;
+                localStorage.setItem('selectedBg', selectedBg);
+                setAppBackground(selectedBg);
+            }
+            setupBgPresets();
+        }
+
+        function deleteCustomImage(index) {
+            const deletedImgData = customBgs[index].data;
+            customBgs.splice(index, 1);
+            localStorage.setItem('customBgs', JSON.stringify(customBgs));
+
+            // If the deleted image was currently selected, revert to a default preset
+            if (selectedBg === deletedImgData) {
+                selectedBg = presets.length > 0 ? presets[0] : '';
+                selectedBgIsCustom = false;
+                localStorage.setItem('selectedBg', selectedBg);
+                setAppBackground(selectedBg);
+            }
             setupBgPresets();
         }
 
@@ -469,7 +546,7 @@
             customBgs = [];
             localStorage.removeItem('customBgs');
             selectedBgIsCustom = false;
-            selectedBg = presets[3]; 
+            selectedBg = presets.length > 0 ? presets[0] : ''; 
             localStorage.removeItem('selectedBg');
             setAppBackground(selectedBg);
             setupBgPresets();
