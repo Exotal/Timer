@@ -40,7 +40,7 @@
             padding-bottom: calc(20px + env(safe-area-inset-bottom)); 
             z-index: 5; 
         }
-        #bottom-left { width: 375px; margin-bottom: 0; transition: width 0.3s ease; }
+        #bottom-left { width: 440px; margin-bottom: 0; transition: width 0.3s ease; }
         #bottom-right { width: 300px; display: flex; justify-content: flex-end; }
 
         /* Main Container for Timer */
@@ -109,12 +109,13 @@
         #spotify-player { 
             height: 152px; /* Standard Compact height for the iframe */
             flex: 1;
+            display: block;
             transition: height 0.3s ease; 
         }
 
         /* Spotify Input Styling Improvements */
         .spotify-controls { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
-        #spotify-input { 
+        #spotify-input {
             width: 100%; 
             padding: 10px; 
             border-radius: 8px; 
@@ -130,8 +131,8 @@
         #spotify-player-container { display: none; align-items: flex-end; gap: 10px; width: 100%; }
         /* Keep the player compact on mobile/tablets even when browser UI is hidden in fullscreen */
         @media (max-height: 1100px), (max-width: 1024px) {
-            #spotify { height: 80px; } 
-            #bottom-left { width: 300px; }
+            #spotify-player { height: 80px; } 
+            #bottom-left { width: 380px; }
         }
 
     </style>
@@ -170,8 +171,8 @@
                 </div>
             </div>
             <div id="spotify-player-container">
-                <iframe id="spotify-player" width="100%" src="" frameborder="0" allowtransparency="true" allow="encrypted-media" style="border-radius: 12px; min-height: 80px;"></iframe>
-                <button id="edit-spotify-btn" class="icon-btn" title="Change Playlist">&#9998;&#xFE0E;</button>
+                <iframe id="spotify-player" width="100%" src="" frameborder="0" allowtransparency="true" allow="encrypted-media" style="border-radius: 12px; border: none;"></iframe>
+                <button id="edit-spotify-btn" class="icon-btn" title="Change Playlist" style="margin-bottom: -5px;">&#9998;&#xFE0E;</button>
             </div>
         </div>
         <div id="bottom-mid"></div>
@@ -223,8 +224,7 @@
             'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1600&h=900&auto=format&fit=crop'  // Relaxing forest
         ];
 
-        let customBgData = localStorage.getItem('customBgData') || null;
-        let customBgName = localStorage.getItem('customBgName') || null;
+        let customBgs = JSON.parse(localStorage.getItem('customBgs')) || [];
         let selectedBgIsCustom = false;
         let selectedBg = presets[3]; // Default selection
         let timerModes = {
@@ -260,9 +260,10 @@
 
         /* --- INITIALIZATION --- */
         function initApp() {
-            if (customBgData) {
-                selectedBg = customBgData;
-                selectedBgIsCustom = true;
+            const lastBg = localStorage.getItem('selectedBg');
+            if (lastBg) {
+                selectedBg = lastBg;
+                selectedBgIsCustom = customBgs.some(bg => bg.data === lastBg);
             }
             setAppBackground(selectedBg);
             loadSettings(); // Load timer settings
@@ -351,26 +352,29 @@
                 bgPresetsContainer.appendChild(thumb);
             });
 
-            // Add custom image thumbnail
-            const customThumb = document.createElement('div');
-            customThumb.id = 'custom-bg-thumb';
-            customThumb.className = 'bg-thumb';
-            if (customBgData) {
-                customThumb.style.backgroundImage = `url('${customBgData}')`;
-                customThumb.title = customBgName || 'Custom Image';
-                customThumb.innerHTML = ''; // Clear any previous text
-            } else {
+            // Add custom image thumbnails
+            customBgs.forEach((bg, index) => {
+                const thumb = document.createElement('div');
+                thumb.className = 'bg-thumb';
+                thumb.style.backgroundImage = `url('${bg.data}')`;
+                thumb.title = bg.name;
+                if (selectedBgIsCustom && selectedBg === bg.data) {
+                    thumb.classList.add('selected');
+                }
+                thumb.onclick = () => selectCustomImage(index);
+                bgPresetsContainer.appendChild(thumb);
+            });
+
+            // Placeholder if no custom images exist
+            if (customBgs.length === 0) {
+                const customThumb = document.createElement('div');
+                customThumb.id = 'custom-bg-thumb';
+                customThumb.className = 'bg-thumb';
                 customThumb.style.backgroundImage = 'none';
                 customThumb.style.backgroundColor = 'rgba(255,255,255,0.1)';
                 customThumb.innerHTML = '<span style="color:rgba(255,255,255,0.5);">No Custom Image</span>';
-                customThumb.title = 'No Custom Image';
+                bgPresetsContainer.appendChild(customThumb);
             }
-            
-            if (selectedBgIsCustom) {
-                customThumb.classList.add('selected');
-            }
-            customThumb.onclick = () => selectCustomImage();
-            bgPresetsContainer.appendChild(customThumb);
         }
 
         function selectPreset(index) {
@@ -380,12 +384,10 @@
             setupBgPresets(); // Re-render thumbnails to show selection border
         }
 
-        function selectCustomImage() {
-            if (customBgData) {
-                selectedBg = customBgData;
-                selectedBgIsCustom = true;
-                setupBgPresets();
-            }
+        function selectCustomImage(index) {
+            selectedBg = customBgs[index].data;
+            selectedBgIsCustom = true;
+            setupBgPresets();
         }
 
         document.getElementById('upload-bg-btn').addEventListener('click', () => {
@@ -421,12 +423,24 @@
                         // Convert to compressed JPEG (0.7 quality) to save space
                         const compressedData = canvas.toDataURL('image/jpeg', 0.7);
                         
-                        customBgData = compressedData;
-                        customBgName = file.name;
-                        localStorage.setItem('customBgData', customBgData);
-                        localStorage.setItem('customBgName', customBgName);
-                        selectCustomImage();
-                        setAppBackground(customBgData);
+                        if (customBgs.length >= 5) {
+                            alert("Maximum of 5 custom images allowed. Please clear existing images first.");
+                            return;
+                        }
+
+                        const newBg = { data: compressedData, name: file.name };
+                        customBgs.push(newBg);
+                        
+                        try {
+                            localStorage.setItem('customBgs', JSON.stringify(customBgs));
+                            selectedBg = compressedData;
+                            selectedBgIsCustom = true;
+                            setAppBackground(selectedBg);
+                            setupBgPresets();
+                        } catch (e) {
+                            alert("Storage limit reached. Try clearing some custom images.");
+                            customBgs.pop();
+                        }
                     };
                     img.src = e.target.result;
                 };
@@ -452,12 +466,11 @@
         document.getElementById('clear-custom-bg-btn').addEventListener('click', clearCustomImage);
 
         function clearCustomImage() {
-            customBgData = null;
-            customBgName = null;
-            localStorage.removeItem('customBgData');
-            localStorage.removeItem('customBgName');
+            customBgs = [];
+            localStorage.removeItem('customBgs');
             selectedBgIsCustom = false;
-            selectedBg = presets[5]; // Reset to a default preset
+            selectedBg = presets[3]; 
+            localStorage.removeItem('selectedBg');
             setAppBackground(selectedBg);
             setupBgPresets();
         }
@@ -489,6 +502,7 @@
 
             // 2. Apply New Background
             setAppBackground(selectedBg);
+            localStorage.setItem('selectedBg', selectedBg);
 
             // 3. Close Modal
             toggleSettings();
