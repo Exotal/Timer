@@ -6,10 +6,10 @@ const ASSETS = [
   'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600&display=swap',
   'https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap',
   // Presets
-  'https://images.unsplash.com/photo-1549492423-400259a2e574?q=80&w=1600&h=900&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?q=80&w=1600&h=900&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=1600&h=900&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1600&h=900&auto=format&fit=crop'
+  'images/touhoulake.jpg',
+  'images/ignyourName.png',
+  'images/degirled.png',
+  'images/abandoned-trainstation.jpg'
 ];
 
 // Install Service Worker and cache assets
