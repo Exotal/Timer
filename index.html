@@ -106,11 +106,28 @@
         .container h1 { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; letter-spacing: 3px; text-transform: uppercase; opacity: 0.7; margin-bottom: 0.5rem; }
 
         /* Spotify Responsive Scaling */
-        #spotify { 
-            height: 152px; /* Standard Compact height */
+        #spotify-player { 
+            height: 152px; /* Standard Compact height for the iframe */
+            flex: 1;
             transition: height 0.3s ease; 
         }
+
+        /* Spotify Input Styling Improvements */
+        .spotify-controls { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+        #spotify-input { 
+            width: 100%; 
+            padding: 10px; 
+            border-radius: 8px; 
+            border: 1px solid rgba(255,255,255,0.2); 
+            background: rgba(0,0,0,0.3); 
+            color: white; 
+            font-family: 'Inter', sans-serif; 
+            box-sizing: border-box; 
+        }
+        .spotify-actions { display: flex; gap: 5px; }
+        .spotify-actions button { flex: 1; display: flex; align-items: center; justify-content: center; }
         
+        #spotify-player-container { display: none; align-items: flex-end; gap: 10px; width: 100%; }
         /* Keep the player compact on mobile/tablets even when browser UI is hidden in fullscreen */
         @media (max-height: 1100px), (max-width: 1024px) {
             #spotify { height: 80px; } 
@@ -145,9 +162,17 @@
 
     <div id="bottom">
         <div id="bottom-left">
-            <iframe id="spotify" width="100%" src="https://open.spotify.com/embed/playlist/60gyLSHCcOGg3HWj5M10Qp?utm_source=generator&theme=0" frameborder="0" allowtransparency="true" allow="encrypted-media" style="border-radius: 12px;"></iframe>
-            <!-- <iframe data-testid="embed-iframe" style="border-radius:12px" src="https://open.spotify.com/embed/playlist/60gyLSHCcOGg3HWj5M10Qp?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
-            <iframe data-testid="embed-iframe" style="border-radius:12px" src="https://open.spotify.com/embed/playlist/60gyLSHCcOGg3HWj5M10Qp?utm_source=generator&theme=0" width="100%" height="352" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe> -->
+            <div id="spotify-input-container" class="spotify-controls">
+                <input type="text" id="spotify-input" placeholder="Paste Spotify Playlist URL">
+                <div class="spotify-actions">
+                    <button class="btn-secondary" id="apply-spotify-btn">Apply</button>
+                    <button class="btn-secondary" id="clear-spotify-btn">Clear</button>
+                </div>
+            </div>
+            <div id="spotify-player-container">
+                <iframe id="spotify-player" width="100%" src="" frameborder="0" allowtransparency="true" allow="encrypted-media" style="border-radius: 12px; min-height: 80px;"></iframe>
+                <button id="edit-spotify-btn" class="icon-btn" title="Change Playlist">&#9998;&#xFE0E;</button>
+            </div>
         </div>
         <div id="bottom-mid"></div>
         <div id="bottom-right"><button class="icon-btn" onclick="toggleFullScreen()" title="Fullscreen">&#9974;&#xFE0E;</button></div>
@@ -205,6 +230,8 @@
         let selectedBgIsCustom = false;
         let selectedBg = presets[5]; // Default selection
         let timerModes = {
+            // Default values for timer modes
+            // These will be overridden by localStorage if available
             focus: 25,
             short: 5,
             long: 15
@@ -212,12 +239,26 @@
         let currentMode = 'focus';
         let timeLeft = timerModes[currentMode] * 60; // Initial time in seconds
         let timerId = null;
+        let spotifyPlaylistRawUrl = localStorage.getItem('spotifyPlaylistRawUrl') || '';
+        let spotifyPlaylistEmbedUrl = localStorage.getItem('spotifyPlaylistEmbedUrl') || '';
 
         const bgWrapper = document.getElementById('bg-wrapper');
         const timerDisplay = document.getElementById('timer');
         const startPauseBtn = document.getElementById('start-pause-btn');
         const modal = document.getElementById('settings-modal');
         const bgPresetsContainer = document.getElementById('bg-presets');
+        const spotifyInput = document.getElementById('spotify-input');
+        const spotifyPlayer = document.getElementById('spotify-player');
+
+        // Load settings from localStorage or set defaults
+        function loadSettings() {
+            const savedFocus = localStorage.getItem('focusTime');
+            const savedShort = localStorage.getItem('shortBreakTime');
+            const savedLong = localStorage.getItem('longBreakTime');
+            if (savedFocus) timerModes.focus = parseInt(savedFocus);
+            if (savedShort) timerModes.short = parseInt(savedShort);
+            if (savedLong) timerModes.long = parseInt(savedLong);
+        }
 
         /* --- INITIALIZATION --- */
         function initApp() {
@@ -226,8 +267,11 @@
                 selectedBgIsCustom = true;
             }
             setAppBackground(selectedBg);
+            loadSettings(); // Load timer settings
             updateDisplay();
             setupBgPresets();
+            spotifyInput.value = spotifyPlaylistRawUrl; // Display last entered URL
+            loadSpotifyPlayer();
         }
 
         /* --- CORE TIMER LOGIC --- */
@@ -287,6 +331,10 @@
             document.getElementById('focus-input').value = timerModes.focus;
             document.getElementById('short-input').value = timerModes.short;
             document.getElementById('long-input').value = timerModes.long;
+
+            // Ensure custom image thumbnail is updated if customBgData changed
+            setupBgPresets(); 
+
             modal.classList.toggle('show');
         }
 
@@ -394,11 +442,20 @@
             const fVal = document.getElementById('focus-input').value;
             const sVal = document.getElementById('short-input').value;
             const lVal = document.getElementById('long-input').value;
-            
+
             // 1. Validate & Apply New Times
-            if (fVal > 0) timerModes.focus = parseInt(fVal);
-            if (sVal > 0) timerModes.short = parseInt(sVal);
-            if (lVal > 0) timerModes.long = parseInt(lVal);
+            if (fVal > 0) {
+                timerModes.focus = parseInt(fVal);
+                localStorage.setItem('focusTime', fVal);
+            }
+            if (sVal > 0) {
+                timerModes.short = parseInt(sVal);
+                localStorage.setItem('shortBreakTime', sVal);
+            }
+            if (lVal > 0) {
+                timerModes.long = parseInt(lVal);
+                localStorage.setItem('longBreakTime', lVal);
+            }
 
             // If timer isn't running, update the time display immediately
             if(!timerId) { 
@@ -412,6 +469,60 @@
             // 3. Close Modal
             toggleSettings();
         }
+
+        // --- SPOTIFY PLAYER LOGIC ---
+        const spotifyInputContainer = document.getElementById('spotify-input-container');
+        const spotifyPlayerContainer = document.getElementById('spotify-player-container');
+
+        function loadSpotifyPlayer() {
+            if (spotifyPlaylistEmbedUrl) {
+                spotifyPlayer.src = spotifyPlaylistEmbedUrl;
+                spotifyInputContainer.style.display = 'none';
+                spotifyPlayerContainer.style.display = 'flex';
+            } else {
+                spotifyInputContainer.style.display = 'flex';
+                spotifyPlayerContainer.style.display = 'none';
+                spotifyPlayer.src = ''; // No playlist loaded
+            }
+        }
+
+        document.getElementById('apply-spotify-btn').addEventListener('click', () => {
+            const rawUrl = spotifyInput.value.trim();
+            spotifyPlaylistRawUrl = rawUrl;
+            localStorage.setItem('spotifyPlaylistRawUrl', rawUrl);
+
+            if (rawUrl === '') {
+                spotifyPlaylistEmbedUrl = '';
+            } else if (rawUrl.includes('open.spotify.com/playlist/')) {
+                const playlistIdMatch = rawUrl.match(/playlist\/([a-zA-Z0-9]+)/);
+                if (playlistIdMatch && playlistIdMatch[1]) {
+                    spotifyPlaylistEmbedUrl = `https://open.spotify.com/embed/playlist/${playlistIdMatch[1]}?utm_source=generator&theme=0`;
+                } else {
+                    alert('Invalid Spotify playlist URL format.');
+                    spotifyPlaylistEmbedUrl = '';
+                }
+            } else if (!rawUrl.includes('open.spotify.com/embed/playlist/')) {
+                alert('Please enter a valid Spotify playlist URL or embed URL.');
+                spotifyPlaylistEmbedUrl = '';
+            }
+
+            localStorage.setItem('spotifyPlaylistEmbedUrl', spotifyPlaylistEmbedUrl);
+            loadSpotifyPlayer();
+        });
+
+        document.getElementById('clear-spotify-btn').addEventListener('click', () => {
+            spotifyInput.value = '';
+            spotifyPlaylistRawUrl = '';
+            spotifyPlaylistEmbedUrl = '';
+            localStorage.removeItem('spotifyPlaylistRawUrl');
+            localStorage.removeItem('spotifyPlaylistEmbedUrl');
+            loadSpotifyPlayer();
+        });
+
+        document.getElementById('edit-spotify-btn').addEventListener('click', () => {
+            spotifyInputContainer.style.display = 'flex';
+            spotifyPlayerContainer.style.display = 'none';
+        });
 
         // Register Service Worker for Offline Use
         if ('serviceWorker' in navigator) {
