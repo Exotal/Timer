@@ -506,8 +506,8 @@
                         // Convert to compressed JPEG (0.7 quality) to save space
                         const compressedData = canvas.toDataURL('image/jpeg', 0.7);
                         
-                        if (customBgs.length >= 5) {
-                            alert("Maximum of 5 custom images allowed. Please clear existing images first.");
+                        if ((presets.length + customBgs.length) >= 9) {
+                            alert("Maximum of 9 total images allowed. Please delete some existing images first.");
                             return;
                         }
 
