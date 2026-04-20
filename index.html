@@ -428,12 +428,16 @@
             // Update the temporary selection variable
             selectedBg = presets[index];
             selectedBgIsCustom = false;
+            setAppBackground(selectedBg);
+            localStorage.setItem('selectedBg', selectedBg);
             setupBgPresets(); // Re-render thumbnails to show selection border
         }
 
         function selectCustomImage(index) {
             selectedBg = customBgs[index].data;
             selectedBgIsCustom = true;
+            setAppBackground(selectedBg);
+            localStorage.setItem('selectedBg', selectedBg);
             setupBgPresets();
         }
 
@@ -444,8 +448,10 @@
 
             // If the deleted preset was currently selected, revert to another one
             if (!selectedBgIsCustom && selectedBg === deletedUrl) {
-                selectedBg = presets.length > 0 ? presets[0] : (customBgs.length > 0 ? customBgs[0].data : '');
-                selectedBgIsCustom = customBgs.length > 0 && selectedBg === customBgs[0].data;
+                const hasPresets = presets.length > 0;
+                const hasCustom = customBgs.length > 0;
+                selectedBg = hasPresets ? presets[0] : (hasCustom ? customBgs[0].data : '');
+                selectedBgIsCustom = !hasPresets && hasCustom;
                 localStorage.setItem('selectedBg', selectedBg);
                 setAppBackground(selectedBg);
             }
@@ -512,6 +518,7 @@
                             localStorage.setItem('customBgs', JSON.stringify(customBgs));
                             selectedBg = compressedData;
                             selectedBgIsCustom = true;
+                            localStorage.setItem('selectedBg', selectedBg);
                             setAppBackground(selectedBg);
                             setupBgPresets();
                         } catch (e) {
