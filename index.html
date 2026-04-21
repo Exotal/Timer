@@ -46,10 +46,14 @@
 
         /* Main Container for Timer */
         /* .container { text-align: center; background: transparent; padding: 2rem 3rem; z-index: 2; position: relative; } */
-        .container { text-align: center; background: rgba(0,0,0,0.5); padding: 3rem 4rem; border-radius: 25px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .container { 
+            position: relative; text-align: center; background: rgba(0,0,0,0.5); 
+            padding: 4.5rem 4rem; border-radius: 25px; backdrop-filter: blur(8px); 
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.3); 
+        }
         
         /* Mode Tabs */
-        .mode-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+        .mode-tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
         .mode-btn { background: none; border: none; color: rgba(255,255,255,0.6); padding: 8px 16px; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: bold; border-radius: 8px; transition: 0.3s; }
         .mode-btn.active { background: rgba(255,255,255,0.2); color: white; }
 
@@ -129,6 +133,26 @@
         /* Specific container adjustments */
         .container h1 { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; letter-spacing: 3px; text-transform: uppercase; opacity: 0.7; margin-bottom: 0.5rem; }
 
+        /* Local Clock Styling */
+        #local-clock { 
+            position: fixed; top: 25px; left: 25px;
+            font-family: 'Inter', sans-serif; font-size: 1.2rem; font-weight: 500; 
+            letter-spacing: 1px; opacity: 0.8; transition: all 0.3s ease; 
+            z-index: 10;
+        }
+
+        /* Swapped Layout Logic */
+        .container.swapped #local-clock {
+            position: static; font-size: 8rem; font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600; margin: 0 0 40px 0; letter-spacing: -4px; line-height: 1; opacity: 1;
+        }
+
+        .container.swapped #timer {
+            position: absolute; bottom: 25px; left: 30px;
+            font-size: 1.4rem; margin: 0; letter-spacing: 1px; opacity: 0.6;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
         /* Spotify Responsive Scaling */
         #spotify-player { 
             height: 152px; /* Standard Compact height for the iframe */
@@ -173,6 +197,7 @@
     </div>
 
     <div class="container">
+        <div id="local-clock"></div>
         <div class="mode-tabs">
             <button class="mode-btn active" onclick="switchMode('focus')">Focus</button>
             <button class="mode-btn" onclick="switchMode('short')">Short Break</button>
@@ -224,6 +249,16 @@
             </div>
 
             <div class="form-group">
+                <label for="show-clock-toggle">Show Local Time</label>
+                <input type="checkbox" id="show-clock-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+            </div>
+
+            <div class="form-group">
+                <label for="swap-clock-toggle">Clock as Main Display</label>
+                <input type="checkbox" id="swap-clock-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+            </div>
+
+            <div class="form-group">
                 <label>Choose Background</label>
                 <div class="bg-presets" id="bg-presets">
                     </div>
@@ -259,6 +294,8 @@
             short: 5,
             long: 15
         };
+        let showClock = localStorage.getItem('showClock') === 'true';
+        let swapClockTimer = localStorage.getItem('swapClockTimer') === 'true';
         let currentMode = 'focus';
         let timeLeft = timerModes[currentMode] * 60; // Initial time in seconds
         let timerId = null;
@@ -293,9 +330,28 @@
             setAppBackground(selectedBg);
             loadSettings(); // Load timer settings
             updateDisplay();
+
+            if (swapClockTimer) {
+                document.querySelector('.container').classList.add('swapped');
+            }
+
+            updateClock();
+            setInterval(updateClock, 1000);
             setupBgPresets();
             spotifyInput.value = spotifyPlaylistRawUrl; // Display last entered URL
             loadSpotifyPlayer();
+        }
+
+        /* --- CLOCK LOGIC --- */
+        function updateClock() {
+            const clockEl = document.getElementById('local-clock');
+            if (showClock || swapClockTimer) {
+                const now = new Date();
+                clockEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                clockEl.style.visibility = 'visible';
+            } else {
+                clockEl.style.visibility = 'hidden';
+            }
         }
 
         /* --- CORE TIMER LOGIC --- */
@@ -355,6 +411,8 @@
             document.getElementById('focus-input').value = timerModes.focus;
             document.getElementById('short-input').value = timerModes.short;
             document.getElementById('long-input').value = timerModes.long;
+            document.getElementById('show-clock-toggle').checked = showClock;
+            document.getElementById('swap-clock-toggle').checked = swapClockTimer;
 
             // Ensure custom image thumbnail is updated if customBgData changed
             setupBgPresets(); 
@@ -581,6 +639,21 @@
             const fVal = document.getElementById('focus-input').value;
             const sVal = document.getElementById('short-input').value;
             const lVal = document.getElementById('long-input').value;
+            const clockToggle = document.getElementById('show-clock-toggle').checked;
+            const swapToggle = document.getElementById('swap-clock-toggle').checked;
+
+            // Save clock preference
+            showClock = clockToggle;
+            localStorage.setItem('showClock', showClock);
+
+            // Save swap preference
+            swapClockTimer = swapToggle;
+            localStorage.setItem('swapClockTimer', swapClockTimer);
+            
+            const container = document.querySelector('.container');
+            container.classList.toggle('swapped', swapClockTimer);
+            
+            updateClock();
 
             // 1. Validate & Apply New Times
             if (fVal > 0) {
